@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>量化数据可视化</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* 紧凑型热力图样式 */
+        .heatmap-container {
+            margin: 30px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .heatmap-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .heatmap {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));
+            gap: 3px; /* 最小间距 */
+        }
+        .heatmap-box {
+            width: 18px; /* 紧凑方块尺寸 */
+            height: 18px;
+            border-radius: 2px;
+            position: relative;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        /* 气泡提示样式 */
+        .heatmap-box::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 5px;
+        }
+        .heatmap-box:hover {
+            transform: scale(1.5);
+            z-index: 10;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .heatmap-box:hover::after {
+            opacity: 1;
+        }
+
+        /* 其他原有样式 */
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        select {
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 250px;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .data-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .chart-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 6px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>量化数据可视化分析</h1>
+
+        <!-- 控制面板 -->
+        <div class="controls">
+            <div>
+                <label for="dataColumn">选择可视化指标：</label>
+                <select id="dataColumn" onchange="updateChart()">
+                    <option value="1">字数量化分</option>
+                    <option value="2">图片量化分</option>
+                    <option value="3">附件量化分</option>
+                    <option value="4">综合加成量化分</option>
+                </select>
+            </div>
+            <div class="chart-actions">
+                <button onclick="resetZoom()">重置缩放</button>
+                <button onclick="toggleAutoSkip()">切换标签显示</button>
+            </div>
+        </div>
+
+        <!-- 主图表 -->
+        <div class="chart-container">
+            <canvas id="dataChart"></canvas>
+        </div>
+
+        <!-- 紧凑型热力图 -->
+        <div class="heatmap-container">
+            <div class="heatmap-title">综合加成量化分热力图（鼠标悬停查看详情）</div>
+            <div class="heatmap" id="heatmap"></div>
+        </div>
+
+        <!-- 数据表格 -->
+        <h2>原始数据明细</h2>
+        <div class="data-table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>字数量化分</th>
+                        <th>图片量化分</th>
+                        <th>附件量化分</th>
+                        <th>综合加成量化分</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 原始数据
+        const data = [
+            ['日记 2024年5月4日(周六)', 0.86, 2, 0, 4.004],
+            ['天才鲜有，庸人常在', 3.07, 2, 0, 8.112],
+            ['教育观念的转变', 3.3, 2, 0, 8.48],
+            ['日记 2024年5月7日(周二)', 9.44, 4, 0, 16.128],
+            ['日记 2024年5月8日(周三)', 3.74, 2, 0, 7.462],
+            ['日记 2024年5月10日(周五)', 4.6, 2, 0, 9.24],
+            ['日记 2024年5月10日(周五)', 2.17, 2, 0, 5.838],
+            ['备忘录', 5.67, 8, 0, 16.404],
+            ['日记 2024年5月12日(周日)', 6.06, 2, 0, 11.284],
+            ['项目进度报告', 7.25, 3, 2, 15.75],
+            ['会议纪要', 2.45, 1, 1, 5.32],
+            ['市场分析', 8.33, 5, 3, 19.56],
+            ['产品需求文档', 10.2, 6, 4, 23.45],
+            ['用户反馈汇总', 4.78, 2, 1, 9.87],
+            ['技术方案设计', 9.15, 4, 2, 18.23],
+            ['测试报告', 5.62, 3, 1, 12.34],
+            ['年度总结', 12.5, 7, 5, 28.9],
+            ['培训材料', 6.88, 4, 2, 15.67]
+        ];
+
+        // 填充表格
+        const tableBody = document.querySelector('#dataTable tbody');
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            const nameTd = document.createElement('td');
+            nameTd.textContent = row[0];
+            tr.appendChild(nameTd);
+
+            for (let i = 1; i < row.length; i++) {
+                const td = document.createElement('td');
+                td.textContent = row[i].toLocaleString();
+                tr.appendChild(td);
+            }
+            tableBody.appendChild(tr);
+        });
+
+        // 创建紧凑型热力图
+        function createHeatmap() {
+            const heatmapContainer = document.getElementById('heatmap');
+            heatmapContainer.innerHTML = '';
+
+            const maxValue = Math.max(...data.map(item => item[4]));
+
+            data.forEach(item => {
+                const value = item[4];
+                const name = item[0];
+                const intensity = Math.min(value / maxValue, 1);
+                const greenValue = Math.floor(100 + (155 * intensity));
+                const color = `rgb(0, ${greenValue}, 0)`;
+
+                const heatmapBox = document.createElement('div');
+                heatmapBox.className = 'heatmap-box';
+                heatmapBox.style.backgroundColor = color;
+                heatmapBox.dataset.tooltip = `${name}: ${value.toFixed(2)}分`;
+
+                heatmapContainer.appendChild(heatmapBox);
+            });
+        }
+
+        // 图表相关函数
+        let myChart = null;
+        let autoSkipEnabled = true;
+
+        function drawChart(columnIndex) {
+            const ctx = document.getElementById('dataChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            const columnNames = ['', '字数量化分', '图片量化分', '附件量化分', '综合加成量化分'];
+            const labels = data.map(item => item[0]);
+            const chartData = data.map(item => item[columnIndex]);
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: columnNames[columnIndex],
+                        data: chartData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
+                        hoverBackgroundColor: 'rgba(75, 192, 192, 0.9)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: '量化分数' } },
+                        x: {
+                            ticks: {
+                                autoSkip: autoSkipEnabled,
+                                maxRotation: 90,
+                                minRotation: 45,
+                                callback: function(value) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.length > 15 ? label.substring(0, 12) + '...' : label;
+                                }
+                            },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: `${columnNames[columnIndex]} 数据分布`,
+                            font: { size: 18, weight: 'bold' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: context => data[context[0].dataIndex][0],
+                                label: context => `${columnNames[columnIndex]}: ${context.raw.toLocaleString()}`
+                            }
+                        },
+                        zoom: {
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                            pan: { enabled: true, mode: 'x' },
+                            limits: { x: { min: 0, max: data.length, minRange: 5 } }
+                        }
+                    },
+                    animation: { duration: 800, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
+        function updateChart() {
+            const selectedColumn = parseInt(document.getElementById('dataColumn').value);
+            drawChart(selectedColumn);
+        }
+
+        function resetZoom() {
+            if (myChart) myChart.resetZoom();
+        }
+
+        function toggleAutoSkip() {
+            autoSkipEnabled = !autoSkipEnabled;
+            updateChart();
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            drawChart(1);
+            createHeatmap();
+        });
+    </script>
+</body>
+</html>
