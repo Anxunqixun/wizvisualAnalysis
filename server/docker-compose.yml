@@ -1,0 +1,48 @@
+services:
+  wiz-analysis:
+    build:
+      context: .
+      args:
+        # 国内慢时用 DaoCloud 等前缀镜像，见 .env 的 BASE_IMAGE
+        BASE_IMAGE: ${BASE_IMAGE:-python:3.12-slim}
+    container_name: wiz-visual-analysis
+    ports:
+      - "${APP_PORT:-5674}:${APP_PORT:-5674}"
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+    # 若数据库/Wiz 在宿主机上，可取消下面注释
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+  # 定时重启（可选）。默认不启动，避免 pull docker:cli 卡住。
+  # 启用：docker compose --profile restarter up -d
+  restarter:
+    profiles: ["restarter"]
+    image: ${DOCKER_CLI_IMAGE:-docker:cli}
+    container_name: wiz-analysis-restarter
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TZ: Asia/Shanghai
+      TARGET_CONTAINER: wiz-visual-analysis
+      RESTART_INTERVAL_SECONDS: ${RESTART_INTERVAL_SECONDS:-86400}
+    depends_on:
+      - wiz-analysis
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        interval=$${RESTART_INTERVAL_SECONDS:-86400}
+        target=$${TARGET_CONTAINER:-wiz-visual-analysis}
+        echo "[restarter] 目标容器=$$target 间隔=$${interval}s ($$((interval / 3600))h)"
+        while true; do
+          echo "[restarter] 等待 $${interval}s 后重启..."
+          sleep "$$interval"
+          echo "[restarter] $$(date '+%Y-%m-%d %H:%M:%S') 正在重启 $$target"
+          docker restart "$$target"
+          echo "[restarter] 重启完成"
+        done

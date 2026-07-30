@@ -34,36 +34,55 @@ class WizServer:
         except Error as e:
             print(f"连接数据库时出错: {e}")
             return None, None
+        except Exception as e:
+            # 非 MySQL 错误（如数据字段异常）也记录，避免 gunicorn worker 直接崩溃且无日志
+            print(f"加载笔记数据时出错: {type(e).__name__}: {e}")
+            raise
     def connectionDatabaseClose(self):
         if self.connection and self.connection.is_connected():
             self.cursor.close()
             self.connection.close()
             print("数据库连接已关闭")
+    def _get_pho_count(self, kb_guid, doc_guid):
+        """从 document_structure.json 取图片数；json 未收录该笔记时返回 0，避免 KeyError 拖垮服务。"""
+        kb_key = str(kb_guid)
+        doc_key = str(doc_guid)
+        photos = self.phoData.get(kb_key, {}).get(doc_key, [])
+        if photos is None:
+            return 0
+        try:
+            return len(photos)
+        except TypeError:
+            return 0
+
     def getPassageInfo(self):
         self.cursor.execute("SELECT * FROM wiz_document")
         results = self.cursor.fetchall()
         for row in results:
             if row["DOCUMENT_OWNER"] !=self.wiz_config['author']:#筛选指定用户
                 continue
+            kb_guid = uuid.UUID(bytes=row["KB_GUID"])
+            doc_guid = uuid.UUID(bytes=row["DOCUMENT_GUID"])
+            body_text = row["BODY_TEXT"] or ""
+            pho_count = self._get_pho_count(kb_guid, doc_guid)
             print('#'*50)
             print(f'标题: {row["DOCUMENT_TITLE"]}')
             print(f'路径: {row["DOCUMENT_CATEGORY"]}')
             print(f'附件数: {row["DOCUMENT_ATTACHMENT_COUNT"]}')
             print(f'创建日期: {row["DT_CREATED"]}')
-            # print(f'笔记所有者GUID: {uuid.UUID(bytes=row["KB_GUID"])}')
-            # print(f'最后访问日期: {row["DT_ACCESSED"]}')
-            # print(f'笔记基本信息修改时间: {row["DT_INFO_MODIFIED"]}')
-            # print(f'笔记数据修改时间: {row["DT_DATA_MODIFIED"]}')
-            # print(f'笔记数据大小: {row["DOCUMENT_DATA_SIZE"]}')
-            # print(f'笔记阅读次数: {row["DOCUMENT_READ_COUNT"]}')
-            # print(f'笔记摘要: {row["DOCUMENT_ABSTRACT_TEXT"]}')
-            print(f'笔记字数: {len(row["BODY_TEXT"])}')
-            # print(f'笔记版本号: {row["VERSION"]}')
-            print(f'笔记GUID: {uuid.UUID(bytes=row["DOCUMENT_GUID"])}')
-            # print(f'笔记所有者: {row["DOCUMENT_OWNER"]}')
-            # print(f'笔记图片: {self.phoData[str(uuid.UUID(bytes=row["KB_GUID"]))][str(uuid.UUID(bytes=row["DOCUMENT_GUID"]))]}')
-            print(f'笔记图片数量: {len(self.phoData[str(uuid.UUID(bytes=row["KB_GUID"]))][str(uuid.UUID(bytes=row["DOCUMENT_GUID"]))])}')
-            one={"GUID":[uuid.UUID(bytes=row["KB_GUID"]),uuid.UUID(bytes=row["DOCUMENT_GUID"])],"name":row["DOCUMENT_TITLE"],"path":row["DOCUMENT_CATEGORY"],"attachCount":row["DOCUMENT_ATTACHMENT_COUNT"],"creatDate":row["DT_CREATED"],"wordCount":len(row["BODY_TEXT"]),"phoCounut":len(self.phoData[str(uuid.UUID(bytes=row["KB_GUID"]))][str(uuid.UUID(bytes=row["DOCUMENT_GUID"]))]),"attachInfo":[]}
+            print(f'笔记字数: {len(body_text)}')
+            print(f'笔记GUID: {doc_guid}')
+            print(f'笔记图片数量: {pho_count}')
+            one = {
+                "GUID": [kb_guid, doc_guid],
+                "name": row["DOCUMENT_TITLE"],
+                "path": row["DOCUMENT_CATEGORY"],
+                "attachCount": row["DOCUMENT_ATTACHMENT_COUNT"],
+                "creatDate": row["DT_CREATED"],
+                "wordCount": len(body_text),
+                "phoCounut": pho_count,
+                "attachInfo": [],
+            }
             self.passageData.append(one)
     def getAttachments(self):
         self.cursor.execute("SELECT * FROM wiz_attachment")

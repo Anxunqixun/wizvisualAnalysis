@@ -1,0 +1,6 @@
+# 固定版本，减少解析/反复拉 metadata
+Flask==3.0.3
+requests==2.32.3
+mysql-connector-python==9.1.0
+gunicorn==22.0.0
+python-dotenv==1.0.1

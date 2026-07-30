@@ -2,471 +2,1229 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ title }}</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <style>
+        :root {
+            --primary: #3d8bfd;
+            --primary-dark: #1c7ed6;
+            --primary-soft: rgba(61, 139, 253, 0.12);
+            --accent: #40c057;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --card: #ffffff;
+            --bg-soft: #f8fafc;
+            --shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+            --radius: 14px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * { box-sizing: border-box; }
+
+        html { -webkit-text-size-adjust: 100%; }
+
         body {
-            background-image: url('{{ url_for('static', filename='biz.png') }}');;
+            margin: 0;
+            font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            line-height: 1.55;
+            color: var(--text);
+            background-color: #0f172a;
+            background-image: url('{{ url_for('static', filename='biz.png') }}');
             background-size: cover;
             background-repeat: no-repeat;
-            background-attachment: fixed;
+            background-attachment: scroll;
+            min-height: 100vh;
+            min-height: 100dvh;
         }
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        /* 表格样式 */
-        table {
+
+        .page {
             width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-            position: sticky;
-            top: 0;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 16px calc(28px + var(--safe-bottom));
         }
 
-        /* 紧凑型热力图样式 */
-        .heatmap-container {
-            margin: 30px 0;
-            padding: 15px;
-            background: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .heatmap-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        .heatmap {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));
-            gap: 3px; /* 最小间距 */
-        }
-        .heatmap-box {
-            width: 18px; /* 紧凑方块尺寸 */
-            height: 18px;
-            border-radius: 2px;
-            position: relative;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        /* 气泡提示样式 */
-        .heatmap-box::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-            margin-bottom: 5px;
-        }
-        .heatmap-box:hover {
-            transform: scale(1.5);
-            z-index: 10;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-        }
-        .heatmap-box:hover::after {
-            opacity: 1;
+        .container {
+            width: 100%;
+            padding: 24px 22px 32px;
+            border-radius: 18px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
         }
 
-        /* 其他原有样式 */
-        .controls {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: rgba(245, 245, 245, 0.5);
-            border-radius: 5px;
+        h1 {
+            text-align: center;
+            margin: 0 0 6px;
+            font-size: clamp(1.25rem, 4vw, 1.75rem);
+            letter-spacing: 0.3px;
+            color: #0f172a;
+            line-height: 1.3;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.88rem;
+            margin: 0 0 14px;
+        }
+
+        /* 刷新信息 */
+        .refresh-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            justify-content: center;
+            gap: 8px 16px;
+            margin: 0 0 18px;
+            padding: 10px 12px;
+            background: linear-gradient(135deg, #f8fafc, #eef2ff);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 12.5px;
+        }
+        .refresh-meta .meta-item {
+            display: inline-flex;
             align-items: center;
+            gap: 5px;
         }
-        select {
+        .refresh-meta .meta-label { color: var(--muted); }
+        .refresh-meta .meta-value {
+            font-weight: 600;
+            color: #2b8a3e;
+            font-variant-numeric: tabular-nums;
+        }
+        .refresh-meta .meta-value.muted {
+            color: #475569;
+            font-weight: 500;
+        }
+        .refresh-meta .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 0 3px rgba(64, 192, 87, 0.2);
+            flex-shrink: 0;
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 14px 12px;
+            box-shadow: var(--shadow);
+            min-width: 0;
+        }
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--accent-color, var(--primary));
+        }
+        .stat-card .label {
+            font-size: 12.5px;
+            color: var(--muted);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .stat-card .icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            background: var(--accent-soft, var(--primary-soft));
+            color: var(--accent-color, var(--primary));
+            flex-shrink: 0;
+        }
+        .stat-card .value {
+            font-size: clamp(1.15rem, 3.5vw, 1.5rem);
+            font-weight: 700;
+            color: #0f172a;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.2;
+            word-break: break-all;
+        }
+        .stat-card .hint {
+            margin-top: 4px;
+            font-size: 11.5px;
+            color: #94a3b8;
+        }
+        .stat-card.c-blue { --accent-color: #3d8bfd; --accent-soft: rgba(61,139,253,.12); }
+        .stat-card.c-green { --accent-color: #40c057; --accent-soft: rgba(64,192,87,.12); }
+        .stat-card.c-purple { --accent-color: #9775fa; --accent-soft: rgba(151,117,250,.12); }
+        .stat-card.c-orange { --accent-color: #fd7e14; --accent-soft: rgba(253,126,20,.12); }
+        .stat-card.c-teal { --accent-color: #20c997; --accent-soft: rgba(32,201,151,.12); }
+        .stat-card.c-pink { --accent-color: #e64980; --accent-soft: rgba(230,73,128,.12); }
+
+        /* 区块 */
+        .section {
+            margin: 16px 0;
+            padding: 16px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        .section-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 2px;
+        }
+        .section-desc {
+            font-size: 12px;
+            color: var(--muted);
+            display: block;
+        }
+
+        /* ========== 自定义下拉（非原生 select） ========== */
+        .cselect {
+            position: relative;
+            min-width: 0;
+            width: 100%;
+            max-width: 280px;
+            user-select: none;
+            z-index: 1;
+        }
+        .cselect.open { z-index: 40; }
+
+        .cselect-trigger {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 44px;
+            padding: 10px 14px;
+            border: 1.5px solid #cfe0ff;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%);
+            box-shadow:
+                0 1px 2px rgba(28, 126, 214, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color .18s, box-shadow .18s, background .18s, transform .12s;
+            text-align: left;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .cselect-trigger:hover {
+            border-color: #8ec5ff;
+            background: linear-gradient(180deg, #ffffff 0%, #ebf4ff 100%);
+        }
+        .cselect-trigger:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(61, 139, 253, 0.22);
+        }
+        .cselect.open .cselect-trigger {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(61, 139, 253, 0.2);
+            background: #fff;
+        }
+        .cselect-trigger .cselect-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+        .cselect-trigger .cselect-caret {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary-soft);
+            color: var(--primary-dark);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform .2s ease, background .2s;
+        }
+        .cselect-trigger .cselect-caret svg {
+            width: 12px;
+            height: 12px;
+            display: block;
+        }
+        .cselect.open .cselect-caret {
+            transform: rotate(180deg);
+            background: rgba(61, 139, 253, 0.2);
+        }
+
+        .cselect-menu {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 6px);
+            margin: 0;
+            padding: 6px;
+            list-style: none;
+            background: #fff;
+            border: 1px solid #d7e6ff;
+            border-radius: 12px;
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+            max-height: 260px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px) scale(0.98);
+            transform-origin: top center;
+            transition: opacity .16s ease, transform .16s ease, visibility .16s;
+            z-index: 50;
+        }
+        .cselect.open .cselect-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+        .cselect-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 11px 12px;
+            border-radius: 9px;
+            font-size: 13.5px;
+            color: #334155;
+            cursor: pointer;
+            transition: background .12s, color .12s;
+        }
+        .cselect-option:hover,
+        .cselect-option:focus {
+            background: #f0f7ff;
+            color: var(--primary-dark);
+            outline: none;
+        }
+        .cselect-option.active {
+            background: linear-gradient(90deg, #e7f1ff, #f5f9ff);
+            color: var(--primary-dark);
+            font-weight: 700;
+        }
+        .cselect-option.active::after {
+            content: "✓";
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .cselect.disabled {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+        .cselect-sm {
+            max-width: 160px;
+        }
+        .cselect-sm .cselect-trigger {
+            min-height: 40px;
             padding: 8px 12px;
-            font-size: 16px;
-            min-width: 250px;
+            font-size: 13px;
+            border-radius: 10px;
         }
+
+        /* 贡献筛选栏 */
+        .contrib-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: linear-gradient(135deg, #f8fafc, #eef5ff);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .toolbar-label {
+            font-size: 12.5px;
+            color: var(--muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .toolbar-field {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .year-field {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .year-field.show { display: flex; }
+
+        /* 贡献热力图 */
+        .contrib-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 4px 2px 10px;
+            margin: 0 -2px;
+        }
+        .contrib-grid {
+            display: grid;
+            grid-auto-flow: column;
+            grid-template-rows: repeat(7, var(--cell, 11px));
+            grid-auto-columns: var(--cell, 11px);
+            gap: var(--gap, 3px);
+            width: max-content;
+            margin: 0 auto;
+        }
+        .contrib-cell {
+            width: var(--cell, 11px);
+            height: var(--cell, 11px);
+            border-radius: 2px;
+            background: #ebedf0;
+        }
+        .contrib-cell.level-0 { background: #ebedf0; }
+        .contrib-cell.level-1 { background: #c6e48b; }
+        .contrib-cell.level-2 { background: #7bc96f; }
+        .contrib-cell.level-3 { background: #239a3b; }
+        .contrib-cell.level-4 { background: #196127; }
+        .contrib-cell.out { opacity: 0.22; }
+        .contrib-legend {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            margin-top: 6px;
+            font-size: 11.5px;
+            color: var(--muted);
+        }
+        .contrib-legend .swatch {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+        }
+        .contrib-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            margin-top: 10px;
+            font-size: 12.5px;
+            color: #475569;
+        }
+        .contrib-meta strong {
+            color: #0f172a;
+            font-variant-numeric: tabular-nums;
+        }
+        #contribRangeLabel {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        /* 路径分布 */
+        .path-list { display: flex; flex-direction: column; gap: 10px; }
+        .path-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 40px;
+            gap: 8px;
+            align-items: center;
+            font-size: 12.5px;
+        }
+        .path-name {
+            color: #334155;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .path-bar-track {
+            height: 8px;
+            background: #f1f5f9;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .path-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #74c0fc, #3d8bfd);
+        }
+        .path-count {
+            text-align: right;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 图表控制栏 */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 14px;
+            padding: 12px;
+            background: linear-gradient(135deg, rgba(248,250,252,.95), rgba(238,242,255,.9));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .control-label {
+            font-size: 12.5px;
+            color: var(--muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .controls .cselect {
+            flex: 1 1 180px;
+            max-width: 320px;
+        }
+
+        .button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0 16px;
+            min-width: 108px;
+            background: #fff;
+            border: 1.5px solid #dbe3f0;
+            border-radius: 12px;
+            color: #334155;
+            font-size: 13.5px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .button:hover {
+            border-color: #a5c8ff;
+            color: var(--primary);
+        }
+        .button-reset {
+            background: linear-gradient(180deg, #fffaf3, #fff4e6);
+            border-color: #ffd8a8;
+            color: #d9480f;
+        }
+        .button-reset:hover {
+            background: #ffe8cc;
+            border-color: #ffc078;
+        }
+        .button-reset::before {
+            content: "↻";
+            margin-right: 6px;
+        }
+
         .chart-container {
             position: relative;
             width: 100%;
-            height: 500px;
-            margin-bottom: 20px;
+            height: min(460px, 58vh);
+            min-height: 260px;
         }
         canvas {
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            max-width: 100%;
         }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
+
+        .score-heatmap {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(16px, 1fr));
+            gap: 3px;
         }
+        .heatmap-box {
+            width: 100%;
+            aspect-ratio: 1;
+            max-width: 18px;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+        .heatmap-box::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.92);
+            color: #fff;
+            padding: 5px 9px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+            max-width: 70vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .heatmap-box:hover { transform: scale(1.35); z-index: 4; }
+        .heatmap-box:hover::after { opacity: 1; }
+
         .data-table-container {
-            max-height: 400px;
-            overflow-y: auto;
+            max-height: min(420px, 55vh);
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 520px;
+        }
+        th, td {
+            border-bottom: 1px solid #eef2f7;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        th {
+            background: #f8fafc;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            color: #475569;
+            font-weight: 600;
+        }
+        tr:nth-child(even) td { background: #fcfdff; }
+        tr:hover td { background: #f0f7ff; }
+        td.num {
+            font-variant-numeric: tabular-nums;
+            color: #334155;
+            white-space: nowrap;
         }
 
-
-        /* 选择框容器 - 增强视觉层次 */
-        .select-container {
-          position: relative;
-          display: inline-block;
-          min-width: 250px;
-          margin-right: 15px;
+        /* ========== 响应式 ========== */
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .page { padding: 14px 10px calc(20px + var(--safe-bottom)); }
+            .container { padding: 18px 14px 24px; border-radius: 14px; }
+            .section { padding: 14px 12px; }
+            .contrib-grid {
+                --cell: 10px;
+                --gap: 2px;
+            }
         }
 
-        /* 选择框主体样式 */
-        select {
-          /* 基础样式 */
-          width: 100%;
-          padding: 12px 40px 12px 15px;
-          font-size: 16px;
-          line-height: 1.5;
-
-          /* 视觉设计 */
-          background-color: #f8f9fa;
-          border: 2px solid #e9ecef;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-          color: #495057;
-          transition: all 0.3s ease;
-
-          /* 移除默认样式 */
-          -webkit-appearance: none;
-          -moz-appearance: none;
-          appearance: none;
-
-          /* 字体继承 */
-          font-family: inherit;
+        @media (max-width: 560px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 12px 10px 10px; border-radius: 12px; }
+            .stat-card .value { font-size: 1.2rem; }
+            .refresh-meta { font-size: 12px; gap: 6px 10px; }
+            .contrib-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .toolbar-field,
+            .year-field.show {
+                width: 100%;
+            }
+            .cselect,
+            .cselect-sm,
+            .controls .cselect {
+                max-width: none;
+                width: 100%;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .button {
+                width: 100%;
+            }
+            .chart-container {
+                height: 280px;
+                min-height: 240px;
+            }
+            .path-row {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 36px;
+            }
+            .contrib-grid {
+                --cell: 9px;
+                --gap: 2px;
+            }
+            /* 手机上 tooltip 改用 title，隐藏 ::after 避免溢出 */
+            .heatmap-box::after { display: none; }
         }
 
-        /* 悬停/聚焦状态 */
-        select:hover {
-          border-color: #b7b9cc;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        @media (max-width: 380px) {
+            .stats-grid { grid-template-columns: 1fr; }
         }
 
-        select:focus {
-          outline: none;
-          border-color: #4CAF50;
-          box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
-        }
-
-        /* 自定义下拉箭头 */
-        .select-container::after {
-          content: "▼";
-          position: absolute;
-          top: 50%;
-          right: 15px;
-          transform: translateY(-50%);
-          color: #6c757d;
-          font-size: 12px;
-          pointer-events: none;
-        }
-
-        /* 下拉选项样式 */
-        select option {
-          padding: 10px 15px;
-          background: white;
-          color: #333;
-        }
-
-        /* 暗色模式适配 */
-        @media (prefers-color-scheme: dark) {
-          select {
-            background-color: #2d3748;
-            border-color: #4a5568;
-            color: #f7fafc;
-          }
-          .select-container::after {
-            color: #a0aec0;
-          }
-        }
-        /* 基础按钮样式 - 匹配您页面的设计语言 */
-        .button {
-          /* 布局属性 */
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 10px 18px;
-          min-width: 100px;
-
-          /* 视觉设计 */
-          background-color: #f8f9fa; /* 浅灰背景 */
-          border: 2px solid #e9ecef; /* 柔和边框 */
-          border-radius: 8px;
-          color: #495057; /* 深灰文字 */
-          font-size: 15px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-
-          /* 交互效果 */
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-          user-select: none;
-        }
-
-        /* 主按钮悬停/激活状态 */
-        .button:hover {
-          background-color: #e9ecef;
-          border-color: #dee2e6;
-          transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-
-        .button:active {
-          transform: translateY(0);
-          box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-
-        /* 特定功能按钮的强调色 */
-        .button-reset {
-          background-color: #fff4e6; /* 浅橙色背景 */
-          border-color: #ffe8cc;
-          color: #d9480f; /* 深橙色文字 */
-        }
-
-        .button-reset:hover {
-          background-color: #ffe8cc;
-          border-color: #ffd8a8;
-        }
-
-        /* 图标集成（可选） */
-        .button-reset::before {
-          content: "↻";
-          display: inline-block;
-          margin-right: 8px;
-          font-size: 14px;
-          transition: transform 0.3s;
-        }
-
-        .button-reset:hover::before {
-          transform: rotate(45deg);
-        }
-
-        /* 按钮组容器优化 */
-        .chart-actions {
-          display: flex;
-          gap: 12px; /* 按钮间距 */
-          margin-top: 10px;
-        }
-        /* 统一所有交互控件的高度 */
-        /* 修改控件容器为Flex布局 */
-        .controls {
-          display: flex;
-          align-items: center; /* 垂直居中 */
-          gap: 15px; /* 元素间距 */
-        }
-
-        /* 确保select和按钮使用相同高度 */
-        .select-container select {
-          height: 42px;
-        }
-
-        .button {
-          height: 42px;
-          display: inline-flex;
-          align-items: center;
-        }
-        .container {
-            max-width: 800px;
-            margin: 100px auto;
-            padding: 14px 120px 50px 120px;
-            border-radius: 15px;
-            backdrop-filter: blur(8px);
-            background-color: rgb(255, 255, 255);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        @media (hover: none) {
+            .stat-card:hover { transform: none; }
+            .heatmap-box:hover { transform: none; }
         }
     </style>
 </head>
 <body>
+    <div class="page">
     <div class="container">
-        <h1 style="text-align: center;">{{ title }}</h1>
+        <h1>{{ title }}</h1>
+        <p class="subtitle">笔记量化 · 内容统计 · 贡献日历</p>
 
-        <!-- 控制面板 -->
-        <div class="controls">
-            <div>
-                <select id="dataColumn" onchange="updateChart()">
-                    <option value="4">{{ headers[4] }}</option>
-                    <option value="3">{{ headers[3] }}</option>
-                    <option value="2">{{ headers[2] }}</option>
-                    <option value="1">{{ headers[1] }}</option>
-                </select>
+        <div class="refresh-meta">
+            <div class="meta-item">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="meta-label">刷新</span>
+                <span class="meta-value">{{ refresh_time }}</span>
             </div>
-            <div class="chart-actions">
-                <button class="button button-reset"  onclick="resetZoom()">重置缩放</button>
+            {% if next_refresh %}
+            <div class="meta-item">
+                <span class="meta-label">下次</span>
+                <span class="meta-value muted">{{ next_refresh }}</span>
+            </div>
+            {% endif %}
+            {% if restart_interval_hours %}
+            <div class="meta-item">
+                <span class="meta-label">周期</span>
+                <span class="meta-value muted">{{ restart_interval_hours }}h</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card c-blue">
+                <div class="label"><span class="icon">文</span>文章数量</div>
+                <div class="value">{{ summary.article_count }}</div>
+                <div class="hint">篇笔记 / 文档</div>
+            </div>
+            <div class="stat-card c-green">
+                <div class="label"><span class="icon">字</span>字数统计</div>
+                <div class="value">{{ summary.word_count_display }}</div>
+                <div class="hint">篇均 {{ summary.avg_words }} 字</div>
+            </div>
+            <div class="stat-card c-orange">
+                <div class="label"><span class="icon">音</span>音频统计</div>
+                <div class="value">{{ summary.audio_count }}</div>
+                <div class="hint">总大小 {{ summary.audio_size_display }}</div>
+            </div>
+            <div class="stat-card c-purple">
+                <div class="label"><span class="icon">图</span>图片数量</div>
+                <div class="value">{{ summary.photo_count }}</div>
+                <div class="hint">来自文档结构解析</div>
+            </div>
+            <div class="stat-card c-teal">
+                <div class="label"><span class="icon">附</span>附件数量</div>
+                <div class="value">{{ summary.attachment_count }}</div>
+                <div class="hint">总大小 {{ summary.attachment_size_display }}</div>
+            </div>
+            <div class="stat-card c-pink">
+                <div class="label"><span class="icon">分</span>综合量化总分</div>
+                <div class="value">{{ summary.total_score }}</div>
+                <div class="hint">篇均 {{ summary.avg_score }} 分</div>
             </div>
         </div>
 
-        <!-- 主图表 -->
-        <div class="chart-container">
-            <canvas id="dataChart"></canvas>
+        <!-- 贡献热力图 -->
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">贡献热力图</h2>
+                    <span class="section-desc" id="contribRangeLabel">加载中…</span>
+                </div>
+            </div>
+
+            <div class="contrib-toolbar">
+                <span class="toolbar-label">时间范围</span>
+                <div class="toolbar-field">
+                    <div class="cselect" id="rangeSelect" data-value="last_year"></div>
+                    <div class="year-field" id="yearField">
+                        <span class="toolbar-label">年份</span>
+                        <div class="cselect cselect-sm" id="yearSelect" data-value=""></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contrib-wrap">
+                <div class="contrib-grid" id="contribGrid" aria-label="贡献日历热力图"></div>
+            </div>
+            <div class="contrib-legend">
+                <span>少</span>
+                <span class="swatch" style="background:#ebedf0"></span>
+                <span class="swatch" style="background:#c6e48b"></span>
+                <span class="swatch" style="background:#7bc96f"></span>
+                <span class="swatch" style="background:#239a3b"></span>
+                <span class="swatch" style="background:#196127"></span>
+                <span>多</span>
+            </div>
+            <div class="contrib-meta">
+                <span>活跃天数 <strong id="metaActiveDays">0</strong> 天</span>
+                <span>区间笔记 <strong id="metaTotalNotes">0</strong> 篇</span>
+                <span>单日最高 <strong id="metaMaxDay">0</strong> 篇</span>
+            </div>
         </div>
 
-        <!-- 紧凑型热力图 -->
-        <div class="heatmap-container">
-            <div class="heatmap-title">{{ headers[4] }}热力图</div>
-            <div class="heatmap" id="heatmap"></div>
+        {% if summary.path_top %}
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">路径分布 Top</h2>
+                    <span class="section-desc">按笔记路径统计数量</span>
+                </div>
+            </div>
+            <div class="path-list" id="pathList"></div>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">量化分数分布</h2>
+                    <span class="section-desc">支持滚轮缩放与拖拽平移</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <span class="control-label">指标</span>
+                <div class="cselect" id="metricSelect" data-value="4"></div>
+                <button type="button" class="button button-reset" onclick="resetZoom()">重置缩放</button>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="dataChart"></canvas>
+            </div>
         </div>
 
-        <!-- 数据表格 -->
-        <h2>原始数据明细</h2>
-        <div class="data-table-container">
-            <table id="dataTable">
-                <thead>
-                    <tr>
-                        <th>{{ headers[0] }}</th>
-                        <th>{{ headers[1] }}</th>
-                        <th>{{ headers[2] }}</th>
-                        <th>{{ headers[3] }}</th>
-                        <th>{{ headers[4] }}</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title" id="scoreHeatTitle">综合量化分热力块</h2>
+                    <span class="section-desc">每块代表一篇笔记，颜色越深分数越高</span>
+                </div>
+            </div>
+            <div class="score-heatmap" id="heatmap"></div>
         </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">原始数据明细</h2>
+                    <span class="section-desc">共 {{ summary.article_count }} 条</span>
+                </div>
+            </div>
+            <div class="data-table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>{{ headers[0] }}</th>
+                            <th>{{ headers[1] }}</th>
+                            <th>{{ headers[2] }}</th>
+                            <th>{{ headers[3] }}</th>
+                            <th>{{ headers[4] }}</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     </div>
 
     <script>
-        // 原始数据
         const data = {{ data|tojson|safe }};
         const headers = {{ headers|tojson|safe }};
+        const contribution = {{ contribution|tojson|safe }};
+        const pathTop = {{ summary.path_top|tojson|safe }};
 
-        // 填充表格
+        const CARET_SVG = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.2L6 7.8l3.5-3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+        function formatNum(n) {
+            if (typeof n !== 'number') return n;
+            return n.toLocaleString(undefined, { maximumFractionDigits: 5 });
+        }
+
+        function parseDate(str) {
+            const [y, m, d] = str.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function formatDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function addDays(d, n) {
+            const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            x.setDate(x.getDate() + n);
+            return x;
+        }
+
+        /* ---------- 自定义下拉组件 ---------- */
+        function createCSelect(root, options, { value, onChange, placeholder } = {}) {
+            root.innerHTML = '';
+            root.classList.add('cselect');
+            const initial = value != null ? String(value) : (options[0] ? String(options[0].value) : '');
+            root.dataset.value = initial;
+
+            const trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'cselect-trigger';
+            trigger.setAttribute('aria-haspopup', 'listbox');
+            trigger.setAttribute('aria-expanded', 'false');
+
+            const text = document.createElement('span');
+            text.className = 'cselect-text';
+            const caret = document.createElement('span');
+            caret.className = 'cselect-caret';
+            caret.innerHTML = CARET_SVG;
+            trigger.appendChild(text);
+            trigger.appendChild(caret);
+
+            const menu = document.createElement('ul');
+            menu.className = 'cselect-menu';
+            menu.setAttribute('role', 'listbox');
+
+            function labelOf(val) {
+                const hit = options.find(o => String(o.value) === String(val));
+                return hit ? hit.label : (placeholder || '请选择');
+            }
+
+            function renderOptions() {
+                menu.innerHTML = '';
+                options.forEach(opt => {
+                    const li = document.createElement('li');
+                    li.className = 'cselect-option' + (String(opt.value) === String(root.dataset.value) ? ' active' : '');
+                    li.setAttribute('role', 'option');
+                    li.dataset.value = opt.value;
+                    li.textContent = opt.label;
+                    li.tabIndex = -1;
+                    li.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        setValue(opt.value, true);
+                        close();
+                    });
+                    menu.appendChild(li);
+                });
+            }
+
+            function setValue(val, emit) {
+                root.dataset.value = String(val);
+                text.textContent = labelOf(val);
+                renderOptions();
+                if (emit && typeof onChange === 'function') onChange(String(val));
+            }
+
+            function open() {
+                document.querySelectorAll('.cselect.open').forEach(el => {
+                    if (el !== root) el.classList.remove('open');
+                });
+                root.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+
+            function close() {
+                root.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            function toggle() {
+                if (root.classList.contains('open')) close();
+                else open();
+            }
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggle();
+            });
+
+            root.appendChild(trigger);
+            root.appendChild(menu);
+            setValue(initial, false);
+
+            return {
+                getValue: () => root.dataset.value,
+                setValue: (v) => setValue(v, false),
+                setOptions: (opts) => {
+                    options = opts;
+                    renderOptions();
+                    text.textContent = labelOf(root.dataset.value);
+                },
+                open, close,
+                el: root
+            };
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.cselect.open').forEach(el => el.classList.remove('open'));
+        });
+
+        /* ---------- 表格 ---------- */
         const tableBody = document.querySelector('#dataTable tbody');
         data.forEach(row => {
             const tr = document.createElement('tr');
-            const nameTd = document.createElement('td');
-            nameTd.textContent = row[0];
-            tr.appendChild(nameTd);
-
-            for (let i = 1; i < row.length; i++) {
+            row.forEach((cell, i) => {
                 const td = document.createElement('td');
-                td.textContent = row[i].toLocaleString();
+                if (i === 0) td.textContent = cell;
+                else {
+                    td.className = 'num';
+                    td.textContent = formatNum(cell);
+                }
                 tr.appendChild(td);
-            }
+            });
             tableBody.appendChild(tr);
         });
 
-        // 创建紧凑型热力图
+        /* ---------- 路径分布 ---------- */
+        (function renderPaths() {
+            const el = document.getElementById('pathList');
+            if (!el || !pathTop || !pathTop.length) return;
+            const max = Math.max(...pathTop.map(p => p.count), 1);
+            pathTop.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'path-row';
+                const pct = Math.max(4, Math.round((p.count / max) * 100));
+                row.innerHTML =
+                    `<div class="path-name" title="${p.path}">${p.path}</div>` +
+                    `<div class="path-bar-track"><div class="path-bar-fill" style="width:${pct}%"></div></div>` +
+                    `<div class="path-count">${p.count}</div>`;
+                el.appendChild(row);
+            });
+        })();
+
+        /* ---------- 贡献热力图 ---------- */
+        function resolveRange(mode, year) {
+            const todayStr = contribution.today || formatDate(new Date());
+            const today = parseDate(todayStr);
+            const earliestStr = contribution.earliest;
+            let start;
+            let end = today;
+
+            if (mode === 'last_year') {
+                start = addDays(today, -364);
+            } else if (mode === 'year') {
+                const y = parseInt(year, 10) || today.getFullYear();
+                start = new Date(y, 0, 1);
+                end = new Date(y, 11, 31);
+                if (end > today) end = today;
+            } else {
+                // all
+                start = earliestStr ? parseDate(earliestStr) : addDays(today, -364);
+                end = today;
+            }
+            if (start > end) start = end;
+            return { start, end };
+        }
+
+        function buildCells(start, end) {
+            // 对齐到周一
+            const startAligned = addDays(start, -((start.getDay() + 6) % 7));
+            const dayMap = contribution.day_map || {};
+            const cells = [];
+            let cursor = startAligned;
+            while (cursor <= end) {
+                const key = formatDate(cursor);
+                const item = dayMap[key] || { count: 0, words: 0 };
+                const inRange = cursor >= start && cursor <= end;
+                cells.push({
+                    date: key,
+                    count: item.count || 0,
+                    words: item.words || 0,
+                    in_range: inRange
+                });
+                cursor = addDays(cursor, 1);
+            }
+            return cells;
+        }
+
+        function levelOf(count, max) {
+            if (count <= 0 || max <= 0) return 0;
+            const r = count / max;
+            if (r <= 0.25) return 1;
+            if (r <= 0.5) return 2;
+            if (r <= 0.75) return 3;
+            return 4;
+        }
+
+        function renderContribution(mode, year) {
+            const { start, end } = resolveRange(mode, year);
+            const cells = buildCells(start, end);
+            const grid = document.getElementById('contribGrid');
+            grid.innerHTML = '';
+
+            let maxCount = 0;
+            let activeDays = 0;
+            let totalNotes = 0;
+            cells.forEach(c => {
+                if (!c.in_range) return;
+                if (c.count > maxCount) maxCount = c.count;
+                if (c.count > 0) activeDays += 1;
+                totalNotes += c.count;
+            });
+
+            cells.forEach(cell => {
+                const div = document.createElement('div');
+                const lv = cell.in_range ? levelOf(cell.count, maxCount) : 0;
+                div.className = `contrib-cell level-${lv}` + (cell.in_range ? '' : ' out');
+                div.title = `${cell.date}\n笔记 ${cell.count} 篇 · 字数 ${cell.words}`;
+                grid.appendChild(div);
+            });
+
+            document.getElementById('metaActiveDays').textContent = activeDays;
+            document.getElementById('metaTotalNotes').textContent = totalNotes;
+            document.getElementById('metaMaxDay').textContent = maxCount;
+
+            const startLabel = formatDate(start);
+            const endLabel = formatDate(end);
+            let modeLabel = '最近一年';
+            if (mode === 'year') modeLabel = `${year} 年`;
+            if (mode === 'all') modeLabel = '全部时间';
+            document.getElementById('contribRangeLabel').textContent =
+                `${modeLabel} · ${startLabel} ~ ${endLabel}`;
+        }
+
+        const years = (contribution.years && contribution.years.length)
+            ? contribution.years
+            : [new Date().getFullYear()];
+
+        const yearField = document.getElementById('yearField');
+        let yearSelectApi = null;
+
+        const rangeSelectApi = createCSelect(
+            document.getElementById('rangeSelect'),
+            [
+                { value: 'last_year', label: '最近一年' },
+                { value: 'year', label: '自然年' },
+                { value: 'all', label: '全部时间' }
+            ],
+            {
+                value: 'last_year',
+                onChange: (val) => {
+                    if (val === 'year') {
+                        yearField.classList.add('show');
+                        if (!yearSelectApi.getValue()) {
+                            yearSelectApi.setValue(String(years[0]));
+                        }
+                    } else {
+                        yearField.classList.remove('show');
+                    }
+                    renderContribution(val, yearSelectApi.getValue());
+                }
+            }
+        );
+
+        yearSelectApi = createCSelect(
+            document.getElementById('yearSelect'),
+            years.map(y => ({ value: String(y), label: `${y} 年` })),
+            {
+                value: String(years[0]),
+                onChange: () => {
+                    if (rangeSelectApi.getValue() === 'year') {
+                        renderContribution('year', yearSelectApi.getValue());
+                    }
+                }
+            }
+        );
+
+        renderContribution('last_year', yearSelectApi.getValue());
+
+        /* ---------- 分数热力块 / 图表 ---------- */
         function createHeatmap(columnIndex) {
             const heatmapContainer = document.getElementById('heatmap');
+            const titleEl = document.getElementById('scoreHeatTitle');
             heatmapContainer.innerHTML = '';
+            if (titleEl) titleEl.textContent = `${headers[columnIndex]}热力块`;
+            if (!data.length) return;
 
-            const maxValue = Math.max(...data.map(item => item[4]));
+            const values = data.map(item => Number(item[columnIndex]) || 0).slice().sort((a, b) => a - b);
+            const maxValue = values[values.length - 1] || 1;
+            const q10 = values[Math.floor(values.length * 0.1)] || 0;
+            const q50 = values[Math.floor(values.length * 0.5)] || 0;
+            const q90 = values[Math.floor(values.length * 0.9)] || 0;
+
+            function getAdjustedColor(value) {
+                if (maxValue <= 0) return 'hsl(210, 40%, 94%)';
+                if (value <= q10) {
+                    const ratio = q10 ? value / q10 : 0;
+                    return `hsl(210, 55%, ${94 - 8 * ratio}%)`;
+                }
+                if (value <= q50) {
+                    const ratio = (q50 - q10) ? (value - q10) / (q50 - q10) : 0;
+                    return `hsl(200, 60%, ${86 - 10 * ratio}%)`;
+                }
+                if (value <= q90) {
+                    const ratio = (q90 - q50) ? (value - q50) / (q90 - q50) : 0;
+                    return `hsl(190, 55%, ${76 - 14 * ratio}%)`;
+                }
+                const ratio = (maxValue - q90) ? (value - q90) / (maxValue - q90) : 0;
+                return `hsl(175, 50%, ${62 - 14 * ratio}%)`;
+            }
 
             data.forEach(item => {
-                // 在 createHeatmap() 函数中修改：
-                const value = item[columnIndex];
-                const name = item[0];
-
-                const values = data.map(item => item[4]).sort((a,b) => a-b);
-                const maxValue = Math.max(...values);
-                const minValue = Math.min(...values);
-                // 1. 计算关键分位数（避免极端值影响）
-                const q10 = values[Math.floor(values.length * 0.1)]; // 10%分位
-                const q50 = values[Math.floor(values.length * 0.5)]; // 中位数
-                const q90 = values[Math.floor(values.length * 0.9)]; // 90%分位
-                // 2. 动态颜色分段函数
-                function getAdjustedColor(value) {
-                  // 基础色 hsl(300, 24%, x%)
-                  if (value <= q10) {
-                    // 低分区：90%-85%明度
-                    const ratio = value / q10;
-                    return `hsl(300, 24%, ${90 - 5 * ratio}%)`;
-                  }
-                  else if (value <= q50) {
-                    // 中低分区：85%-80%明度
-                    const ratio = (value - q10) / (q50 - q10);
-                    return `hsl(300, 24%, ${85 - 5 * ratio}%)`;
-                  }
-                  else if (value <= q90) {
-                    // 核心密集区：80%-70%明度（扩大颜色区分）
-                    const ratio = (value - q50) / (q90 - q50);
-                    return `hsl(300, 24%, ${80 - 10 * ratio}%)`;
-                  }
-                  else {
-                    // 高分区：70%-60%明度
-                    const ratio = (value - q90) / (maxValue - q90);
-                    return `hsl(300, 24%, ${70 - 10 * ratio}%)`;
-                  }
-                }
-
-                // 3. 应用颜色
-                const color = getAdjustedColor(value);
-                const heatmapBox = document.createElement('div');
-                heatmapBox.className = 'heatmap-box';
-                heatmapBox.style.backgroundColor = color;
-                heatmapBox.dataset.tooltip = `${name}: ${value.toFixed(2)}分`;
-
-                heatmapContainer.appendChild(heatmapBox);
+                const value = Number(item[columnIndex]) || 0;
+                const box = document.createElement('div');
+                box.className = 'heatmap-box';
+                box.style.backgroundColor = getAdjustedColor(value);
+                box.dataset.tooltip = `${item[0]}: ${value.toFixed(2)} 分`;
+                box.title = `${item[0]}: ${value.toFixed(2)} 分`;
+                heatmapContainer.appendChild(box);
             });
         }
 
-        // 图表相关函数
         let myChart = null;
-        let autoSkipEnabled = true;
 
         function drawChart(columnIndex) {
             const ctx = document.getElementById('dataChart').getContext('2d');
             if (myChart) myChart.destroy();
 
-            const columnNames = headers//['', '字数量化分', '图片量化分', '附件量化分', '综合加成量化分'];
-            const labels = data.map(item => item[0]);
-            const chartData = data.map(item => item[columnIndex]);
-
             myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: data.map(item => item[0]),
                     datasets: [{
-                        label: columnNames[columnIndex],
-                        data: chartData,
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
+                        label: headers[columnIndex],
+                        data: data.map(item => item[columnIndex]),
+                        backgroundColor: 'rgba(61, 139, 253, 0.55)',
+                        borderColor: 'rgba(61, 139, 253, 1)',
                         borderWidth: 1,
-                        hoverBackgroundColor: 'rgba(75, 192, 192, 0.9)'
+                        borderRadius: 4,
+                        hoverBackgroundColor: 'rgba(61, 139, 253, 0.85)'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, title: { display: true, text: '量化分数' } },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '量化分数' },
+                            grid: { color: 'rgba(148, 163, 184, 0.2)' }
+                        },
                         x: {
                             ticks: {
-                                autoSkip: autoSkipEnabled,
-                                maxRotation: 90,
-                                minRotation: 45,
-                                callback: function(value) {
+                                autoSkip: true,
+                                maxRotation: 60,
+                                minRotation: 0,
+                                callback: function (value) {
                                     const label = this.getLabelForValue(value);
-                                    return label.length > 15 ? label.substring(0, 12) + '...' : label;
+                                    return label.length > 10 ? label.substring(0, 8) + '…' : label;
                                 }
                             },
                             grid: { display: false }
@@ -476,41 +1234,58 @@
                         legend: { display: false },
                         title: {
                             display: true,
-                            text: `${columnNames[columnIndex]} 数据分布`,
-                            font: { size: 18, weight: 'bold' }
+                            text: `${headers[columnIndex]} 数据分布`,
+                            font: { size: 15, weight: 'bold' },
+                            color: '#1f2937'
                         },
                         tooltip: {
                             callbacks: {
                                 title: context => data[context[0].dataIndex][0],
-                                label: context => `${columnNames[columnIndex]}: ${context.raw.toLocaleString()}`
+                                label: context => `${headers[columnIndex]}: ${formatNum(context.raw)}`
                             }
                         },
                         zoom: {
                             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
                             pan: { enabled: true, mode: 'x' },
-                            limits: { x: { min: 0, max: data.length, minRange: 5 } }
+                            limits: { x: { min: 0, max: Math.max(data.length, 1), minRange: 5 } }
                         }
                     },
-                    animation: { duration: 800, easing: 'easeOutQuart' }
+                    animation: { duration: 600, easing: 'easeOutQuart' }
                 }
             });
         }
 
-        function updateChart() {
-            const selectedColumn = parseInt(document.getElementById('dataColumn').value);
-            drawChart(selectedColumn); //图表刷新
-            createHeatmap(selectedColumn); // 热力图刷新
+        function updateMetric(columnIndex) {
+            const col = parseInt(columnIndex, 10);
+            drawChart(col);
+            createHeatmap(col);
         }
+
+        createCSelect(
+            document.getElementById('metricSelect'),
+            [
+                { value: '4', label: headers[4] },
+                { value: '3', label: headers[3] },
+                { value: '2', label: headers[2] },
+                { value: '1', label: headers[1] }
+            ],
+            {
+                value: '4',
+                onChange: updateMetric
+            }
+        );
 
         function resetZoom() {
             if (myChart) myChart.resetZoom();
         }
 
-
-        // 初始化
         window.addEventListener('load', () => {
             drawChart(4);
             createHeatmap(4);
+        });
+
+        window.addEventListener('resize', () => {
+            if (myChart) myChart.resize();
         });
     </script>
 </body>
